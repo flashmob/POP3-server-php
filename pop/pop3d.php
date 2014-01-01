@@ -5,7 +5,7 @@
 Guerrilla POP3d
 An minimalist, event-driven I/O, non-blocking POP3 server in PHP
 
-Copyright (c) 2012 Flashmob, GuerrillaMail.com
+Copyright (c) 2014 Flashmob, GuerrillaMail.com
 
 Version: 1.0
 Author: Flashmob, GuerrillaMail.com
@@ -107,6 +107,10 @@ if (file_exists(dirname(__FILE__) . '/popd-config.php')) {
     define('GPOP_PORT', $listen_port);
     define('GPOP_DB_MAPPER', 'Mysql');
 
+    // ssl settings
+    define('GPOP_PEM_FILE_PATH', ''); // full path to your .pem file for ssl (key and cert)
+    define('GPOP_PEM_PASSPHRASE', 'phpPopServerSecret');
+
 
 }
 ##############################################################
@@ -114,11 +118,36 @@ if (file_exists(dirname(__FILE__) . '/popd-config.php')) {
 ##############################################################
 spl_autoload_register('pop3_class_loader', false);
 
-function pop3_class_loader($class) {
+function pop3_class_loader($class)
+{
 
     $path = str_replace('_', '/', $class);
-    $path = dirname(__FILE__).'/'.$path.'.php';
+    $path = dirname(__FILE__) . '/' . $path . '.php';
     require($path);
+
+}
+
+function generate_certificate($pem_passphrase)
+{
+
+    $dn = array(
+        "countryName"            => "AU",
+        "stateOrProvinceName"    => "New South Wales",
+        "localityName"           => "Sydney",
+        "organizationName"       => "Servers and Sockets Ltd",
+        "organizationalUnitName" => "PHP Team",
+        "commonName"             => "Shing Dong",
+        "emailAddress"           => "shing@example.com"
+    );
+    $privkey = openssl_pkey_new();
+    $cert = openssl_csr_new($dn, $privkey);
+    $cert = openssl_csr_sign($cert, null, $privkey, 365);
+    $pem = array();
+    openssl_x509_export($cert, $pem[0]);
+    openssl_pkey_export($privkey, $pem[1], $pem_passphrase);
+    $pem = implode($pem);
+
+    return $pem;
 
 }
 
@@ -142,24 +171,49 @@ $next_id = 1; // next client id
  */
 $clients = array();
 
-
 if (GPOP_PORT == 995) {
+    $pem_passphrase = GPOP_PEM_PASSPHRASE;
+    if (GPOP_PEM_FILE_PATH == '') {
+        // generate certificate
+        $pem = generate_certificate($pem_passphrase);
+        // Save as a PEM file
+        $pemfile = sys_get_temp_dir() . './pop-server.pem';
+        file_put_contents($pemfile, $pem);
+        $pem_self = true;
+    } else {
+        // user specified
+        $pemfile = GPOP_PEM_FILE_PATH;
+        $pem_self = false;
+    }
+
     // ssl setup
     $context = stream_context_create();
     // local_cert must be in PEM format
-    stream_context_set_option($context, 'ssl', 'local_cert', './server.pem');
+    stream_context_set_option($context, 'ssl', 'local_cert', $pemfile);
     // Pass Phrase (password) of private key
-    stream_context_set_option($context, 'ssl', 'passphrase', 'comet');
-
-    stream_context_set_option($context, 'ssl', 'allow_self_signed', true);
+    stream_context_set_option($context, 'ssl', 'passphrase', $pem_passphrase);
+    stream_context_set_option($context, 'ssl', 'allow_self_signed', $pem_self);
     stream_context_set_option($context, 'ssl', 'verify_peer', false);
 }
 
+
+if (isset($context)) {
+    // Apply SSL context
+    $socket = stream_socket_server(
+        'tcp://' . GPOP_LISTEN_IP4 . ':' . $listen_port,
+        $error_number,
+        $error_string,
+        STREAM_SERVER_BIND | STREAM_SERVER_LISTEN,
+        $context
+    );
+} else {
+    $socket = stream_socket_server('tcp://' . GPOP_LISTEN_IP4 . ':' . $listen_port, $error_number, $error_string);
+
+}
 /**
  * Setup the main event loop, open a non-blocking stream socket and set the
  * ev_accept() function to accept new connection events
  */
-$socket = stream_socket_server('tcp://' . GPOP_LISTEN_IP4 . ':' . $listen_port, $error_number, $error_string);
 if (!$socket) {
     die(__LINE__ . "[$error_number] $error_string");
 }
@@ -247,7 +301,11 @@ function ev_accept($socket, $flag, $base)
 function ev_error($buffer, $error, $id)
 {
     global $clients;
-    log_line("event error $error client:$id ".EV_TIMEOUT.", ".EV_SIGNAL.", ".EV_READ.", ".EV_WRITE." and ".EV_PERSIST."  ", 1);
+    log_line(
+        "event error $error client:$id " . EV_TIMEOUT . ", " . EV_SIGNAL . ", " . EV_READ . ", " . EV_WRITE . " and "
+        . EV_PERSIST . "  ",
+        1
+    );
 
     // some errors:
     // 65 timeout
@@ -415,7 +473,7 @@ function process_pop($client_id)
                             add_response(
                                 $client_id,
                                 GPOP_RESPONSE_OK . ' ' . count($list['messages']) . ' messages (' . $list['octets']
-                                    . ' octets)'
+                                . ' octets)'
                             );
 
                             foreach ($list['messages'] as $msg) {
