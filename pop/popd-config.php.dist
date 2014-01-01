@@ -1,4 +1,7 @@
 <?php
+/*
+ *rename this file to popd-config.php
+ */
 
 // server config
 define('GPOP_LISTEN_IP4', '0.0.0.0'); // 0.0.0.0 or ip address
