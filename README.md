@@ -29,8 +29,18 @@ git clone https://github.com/flashmob/POP3-server-php pop
 cd pop
 cp popd-config.php.dist popd-config.php
 (edit the config for your needs)
-php ./pop3d.php
+php ./pop3d.php -p 110 -v -l pop.log
 ```
+
+(Run as root/wheel user, then the server will drop down to the UID specified in the config file.
+Also, make sure ports aren't firewalled)
+
+Arguments:
+-p [port]     110 default, use 995 if configuring SSL
+-v            Verbose
+-l [filename] Log file
+
+(May need to: sudo ufw allow 110)
 
 See the Driver directory and implement your own driver
 

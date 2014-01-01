@@ -16,15 +16,11 @@ class PopDb_Mapper
      */
     public static function getInstance($driver = 'Mysql')
     {
-        if (isset(self::$instance)) {
-            return self::$instance;
+        $class = 'PopDb_Driver_' . $driver;
+        if (class_exists($class)) {
+            self::$instance = new $class();
         } else {
-            $class = 'PopDb_Driver_' . $driver;
-            if (class_exists($class)) {
-                self::$instance = new $class();
-            } else {
-                self::$instance = new PopDb_Driver_Mysql();
-            }
+            self::$instance = new PopDb_Driver_Mysql();
         }
 
         return self::$instance;

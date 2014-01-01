@@ -10,7 +10,7 @@ define('GPOP_HOSTNAME', 'guerrillamail.com');
 define('GPOP_PORT', $listen_port);
 
 // Database
-define('GPOP_DB_MAPPER', 'Mysql');
+define('GPOP_DB_MAPPER', 'Mysql'); // Name of the driver in PodDb/Driver
 define('GPOP_MYSQL_HOST', 'localhost');
 define('GPOP_MYSQL_USER', 'dbx');
 define('GPOP_MYSQL_PASS', 'password123');

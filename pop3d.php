@@ -162,10 +162,10 @@ define ('GPOP_RESPONSE_ERROR', '-ERR');
 define ('GPOP_RESPONSE_TERMINATE', ".\r\n");
 
 $db = PopDb_Mapper::getInstance(GPOP_DB_MAPPER);
-
 if ($db->testSettings() === false) {
     die('Please check your MySQL settings');
 }
+unset($db);
 
 $next_id = 1; // next client id
 /**
@@ -271,7 +271,7 @@ function ev_accept($socket, $flag, $base)
     $clients[$next_id]['socket'] = $connection;
     $clients[$next_id]['ev_buffer'] = $buffer; // new socket
     $clients[$next_id]['state'] = 0;
-
+    $clients[$next_id]['db'] = PopDb_Mapper::getInstance(GPOP_DB_MAPPER);
     $clients[$next_id]['user'] = '';
     $clients[$next_id]['pass'] = '';
     $clients[$next_id]['error_c'] = 0;
@@ -369,8 +369,8 @@ function process_pop($client_id)
     global $clients;
 
 
-    $PopDb = PopDb_Mapper::getInstance(GPOP_DB_MAPPER);
-
+    //$PopDb = PopDb_Mapper::getInstance(GPOP_DB_MAPPER);
+    $PopDb = $clients[$client_id]['db'];
     switch ($clients[$client_id]['state']) {
         case 0:
             // Greeting
