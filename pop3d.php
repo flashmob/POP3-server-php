@@ -37,7 +37,7 @@ if (flock($fp, LOCK_EX | LOCK_NB)) { // do an exclusive lock, non-blocking
     die();
 }
 
-cdir(dirname(__FILE__));
+chdir(dirname(__FILE__));
 
 // It's a daemon! We should not exit... A warning though:
 // You may need to have another script to
