@@ -5,7 +5,7 @@ interface PopDb_DriverInterface
     public function testSettings();
 
     // verify USER, PASS or APOP
-    public function auth($user, $password, $ts = '');
+    public function auth($username, $password, $ip_address, $ts = '');
 
     // STAT command
     public function getStat($username);

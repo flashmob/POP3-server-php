@@ -104,13 +104,14 @@ class PopDb_Driver_Mysql implements PopDb_DriverInterface
     /**
      * Look up the database to authenticate the password
      *
-     * @param string $user      in the following format: folder8+5@dbxexpress.com
-     * @param string $password  Interprets $password as APOP if $ts is passed, otherwise cleartext
-     * @param string $ts        Timestamp following APOP spec
+     * @param string $user     in the following format: folder8+5@dbxexpress.com
+     * @param string $password Interprets $password as APOP if $ts is passed, otherwise cleartext
+     * @param string $ip_address
+     * @param string $ts       Timestamp following APOP spec
      *
      * @return bool
      */
-    public function auth($user, $password, $ts = '')
+    public function auth($user, $password, $ip_address, $ts = '')
     {
 
         $valid = false;

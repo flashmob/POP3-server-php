@@ -37,6 +37,8 @@ if (flock($fp, LOCK_EX | LOCK_NB)) { // do an exclusive lock, non-blocking
     die();
 }
 
+cdir(dirname(__FILE__));
+
 // It's a daemon! We should not exit... A warning though:
 // You may need to have another script to
 // watch your daemon process and restart of needed.
@@ -405,7 +407,7 @@ function process_pop($client_id)
                     }
 
                     if (!empty($clients[$client_id]['user']) && !empty($clients[$client_id]['pass'])) {
-                        if ($PopDb->auth($clients[$client_id]['user'], $clients[$client_id]['pass'])) {
+                        if ($PopDb->auth($clients[$client_id]['user'], $clients[$client_id]['pass'], $clients[$client_id]['address'])) {
                             $clients[$client_id]['state'] = 2;
                             add_response($client_id, GPOP_RESPONSE_OK);
                             break;
@@ -418,7 +420,7 @@ function process_pop($client_id)
                     $toks = explode(' ', $input);
                     if (sizeof($toks) == 3) {
 
-                        if ($PopDb->auth($toks[1], $toks[2], $clients[$client_id]['ts'])) {
+                        if ($PopDb->auth($toks[1], $toks[2], $clients[$client_id]['address'], $clients[$client_id]['ts'])) {
                             $clients[$client_id]['state'] = 2;
                             add_response($client_id, GPOP_RESPONSE_OK);
                             $clients[$client_id]['user'] = $toks[1];
