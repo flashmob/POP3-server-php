@@ -90,7 +90,7 @@ class PopDb_Driver_Mysql implements PopDb_DriverInterface
         $link = mysql_connect(GPOP_MYSQL_HOST, GPOP_MYSQL_USER, GPOP_MYSQL_PASS) or
             $DB_ERROR = "Couldn't connect to server.";
         mysql_select_db(GPOP_MYSQL_DB, $link) or $DB_ERROR = "Couldn't select database.";
-        mysql_query("SET NAMES utf8");
+        mysql_query("SET NAMES utf8", $link);
 
         if ($DB_ERROR) {
             log_line($DB_ERROR, 1);
@@ -162,6 +162,7 @@ class PopDb_Driver_Mysql implements PopDb_DriverInterface
      */
     public function getList($username, $pop_id = '')
     {
+        $link = $this->get_mysql_link();
         $pop_id = (int) $pop_id;
         $inbox = $this->getInox($username);
 
@@ -177,7 +178,7 @@ class PopDb_Driver_Mysql implements PopDb_DriverInterface
 
         $ret = false;
 
-        if ($result = mysql_query($sql)) {
+        if ($result = mysql_query($sql, $link)) {
             if (mysql_num_rows($result)) {
                 $total_size = 0;
                 while ($row = mysql_fetch_assoc($result)) {
@@ -212,6 +213,7 @@ class PopDb_Driver_Mysql implements PopDb_DriverInterface
      */
     public function MsgMarkDel($username, $pop_id)
     {
+        $link = $this->get_mysql_link();
         $inbox = $this->getInox($username);
 
         if (!$inbox) {
@@ -222,7 +224,7 @@ class PopDb_Driver_Mysql implements PopDb_DriverInterface
         $sql = "SELECT mail_id FROM  `mail` ";
         $sql .= "WHERE inbox_id = " . $inbox['inbox_id'];
         $sql .= ' AND pop_id = ' . $pop_id;
-        $result = mysql_query($sql) or error_log(mysql_error());
+        $result = mysql_query($sql, $link) or error_log(mysql_error());
         if ($count = mysql_num_rows($result)) {
             $this->markedDeleted[$username][] = $pop_id;
         }
@@ -250,6 +252,7 @@ class PopDb_Driver_Mysql implements PopDb_DriverInterface
      */
     public function getMsg($username, $pop_id)
     {
+        $link = $this->get_mysql_link();
         $inbox = $this->getInox($username);
 
         if (!$inbox) {
@@ -260,7 +263,7 @@ class PopDb_Driver_Mysql implements PopDb_DriverInterface
         $sql = "SELECT `data` FROM  `mail` ";
         $sql .= "WHERE inbox_id = " . $inbox['inbox_id'];
         $sql .= ' AND pop_id = ' . $pop_id;
-        $result = mysql_query($sql) or error_log(mysql_error());
+        $result = mysql_query($sql, $link) or error_log(mysql_error());
         if (mysql_num_rows($result)) {
             $row = mysql_fetch_assoc($result);
             return $row['data'];
@@ -277,7 +280,7 @@ class PopDb_Driver_Mysql implements PopDb_DriverInterface
      */
     public function commitDelete($username)
     {
-
+        $link = $this->get_mysql_link();
         $affected = 0;
         $inbox = $this->getInox($username);
 
@@ -296,7 +299,7 @@ class PopDb_Driver_Mysql implements PopDb_DriverInterface
             $sql = "SELECT `data` FROM  `mail` ";
             $sql .= "WHERE inbox_id = " . $inbox['inbox_id'];
             $sql .= ' AND mail_id IN (' . explode(', ', $id_list) . ')';
-            mysql_query($sql) or error_log(mysql_error());
+            mysql_query($sql, $link) or error_log(mysql_error());
             $affected += mysql_affected_rows();
 
         }
@@ -313,9 +316,9 @@ class PopDb_Driver_Mysql implements PopDb_DriverInterface
      */
     private function getInox($username)
     {
-
+        $link = $this->get_mysql_link();
         $sql = "SELECT * FROM `inboxes` WHERE `username` = '".mysql_real_escape_string($username)."'";
-        $result = mysql_query($sql);
+        $result = mysql_query($sql, $link);
         if (mysql_num_rows($result)) {
             return mysql_fetch_assoc($result);
         }
