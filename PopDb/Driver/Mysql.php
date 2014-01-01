@@ -115,7 +115,7 @@ class PopDb_Driver_Mysql implements PopDb_DriverInterface
 
         $valid = false;
 
-        $inbox = $this->getInox($user);
+        $inbox = $this->getInbox($user);
 
         if (!$inbox) {
             return false;
@@ -139,7 +139,7 @@ class PopDb_Driver_Mysql implements PopDb_DriverInterface
      */
     public function getStat($username)
     {
-        $inbox = $this->getInox($username);
+        $inbox = $this->getInbox($username);
 
         if (!$inbox) {
             return false;
@@ -164,7 +164,7 @@ class PopDb_Driver_Mysql implements PopDb_DriverInterface
     {
         $link = $this->get_mysql_link();
         $pop_id = (int) $pop_id;
-        $inbox = $this->getInox($username);
+        $inbox = $this->getInbox($username);
 
         if (!$inbox) {
             return false;
@@ -214,7 +214,7 @@ class PopDb_Driver_Mysql implements PopDb_DriverInterface
     public function MsgMarkDel($username, $pop_id)
     {
         $link = $this->get_mysql_link();
-        $inbox = $this->getInox($username);
+        $inbox = $this->getInbox($username);
 
         if (!$inbox) {
             return false;
@@ -253,7 +253,7 @@ class PopDb_Driver_Mysql implements PopDb_DriverInterface
     public function getMsg($username, $pop_id)
     {
         $link = $this->get_mysql_link();
-        $inbox = $this->getInox($username);
+        $inbox = $this->getInbox($username);
 
         if (!$inbox) {
             return false;
@@ -282,7 +282,7 @@ class PopDb_Driver_Mysql implements PopDb_DriverInterface
     {
         $link = $this->get_mysql_link();
         $affected = 0;
-        $inbox = $this->getInox($username);
+        $inbox = $this->getInbox($username);
 
         if (!$inbox) {
             return false;
@@ -314,7 +314,7 @@ class PopDb_Driver_Mysql implements PopDb_DriverInterface
      *
      * @return array|bool
      */
-    private function getInox($username)
+    private function getInbox($username)
     {
         $link = $this->get_mysql_link();
         $sql = "SELECT * FROM `inboxes` WHERE `username` = '".mysql_real_escape_string($username)."'";
