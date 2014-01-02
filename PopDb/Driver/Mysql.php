@@ -37,7 +37,7 @@
  *
  */
 
-class PopDb_Driver_Mysql implements PopDb_DriverInterface
+class PopDb_Driver_Mysql extends AbstractDriver implements  PopDb_DriverInterface
 {
 
     protected $markedDeleted = array();
@@ -155,7 +155,7 @@ class PopDb_Driver_Mysql implements PopDb_DriverInterface
      * Returns an array of 'messages' with 'id', 'octets' (size), and checksum (md5)
      *
      * @param string     $username
-     * @param string     $pop_id
+     * @param string     $pop_id unique message id
      *
      * @internal param int|string $message_id if given, returns a single message. false if not found
      *

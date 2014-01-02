@@ -25,4 +25,6 @@ interface PopDb_DriverInterface
     // QUIT - delete all on the delete list
     public function commitDelete($username);
 
+    public function getError();
+
 }

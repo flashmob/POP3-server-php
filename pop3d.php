@@ -370,6 +370,9 @@ function process_pop($client_id)
 
 
     //$PopDb = PopDb_Mapper::getInstance(GPOP_DB_MAPPER);
+    /**
+     * @var $PopDb AbstractDriver
+     */
     $PopDb = $clients[$client_id]['db'];
     switch ($clients[$client_id]['state']) {
         case 0:
@@ -413,7 +416,11 @@ function process_pop($client_id)
                             break;
                         }
                     }
-                    add_response($client_id, GPOP_RESPONSE_ERROR);
+                    if ($PopDb->getError() == AbstractDriver::ERROR_IN_USE) {
+                        add_response($client_id, GPOP_RESPONSE_ERROR.' '.$PopDb->getErrorMsg());
+                    } else {
+                        add_response($client_id, GPOP_RESPONSE_ERROR);
+                    }
 
                 } elseif (stripos($input, 'APOP') === 0) {
                     // APOP mrose c4c9334bac560ecc979e58001b3e22fb
@@ -429,7 +436,22 @@ function process_pop($client_id)
                             break;
                         }
                     }
-                    add_response($client_id, GPOP_RESPONSE_ERROR);
+                    if ($PopDb->getError() == AbstractDriver::ERROR_IN_USE) {
+                        add_response($client_id, GPOP_RESPONSE_ERROR.' '.$PopDb->getErrorMsg());
+                    } else {
+                        add_response($client_id, GPOP_RESPONSE_ERROR);
+                    }
+                } elseif (stripos($input, 'CAPA') === 0) {
+                    // http://www.ietf.org/rfc/rfc2449.txt
+                    add_response($client_id, GPOP_RESPONSE_OK.' Capability list follows');
+                    add_response($client_id, 'USER'); // auth only
+                    //add_response($client_id, 'SASL CRAM-MD5 KERBEROS_V4'); // auth
+                    add_response($client_id, 'RESP-CODES'); // both
+                    add_response($client_id, 'LOGIN-DELAY 5'); // both, seconds between re-auth
+                    add_response($client_id, 'EXPIRE 1'); // both, deletion policy (days) days
+                    add_response($client_id, 'UIDL'); // both
+                    add_response($client_id, 'IMPLEMENTATION GuerrillaMail.com');
+                    add_response($client_id, '.');
                 } else {
                     add_response($client_id, GPOP_RESPONSE_ERROR);
                 }
@@ -441,7 +463,17 @@ function process_pop($client_id)
             $input = trim(read_line($clients, $client_id));
 
             if ($input) {
-                if (stripos($input, 'STAT') === 0) {
+                if (stripos($input, 'CAPA') === 0) {
+                    // http://www.ietf.org/rfc/rfc2449.txt
+                    add_response($client_id, GPOP_RESPONSE_OK.' Capability list follows');
+                    add_response($client_id, 'RESP-CODES'); // both
+                    add_response($client_id, 'LOGIN-DELAY 5'); // both, seconds between re-auth
+                    add_response($client_id, 'EXPIRE 1'); // both, deletion policy (days) days
+                    add_response($client_id, 'UIDL'); // both
+                    add_response($client_id, 'IMPLEMENTATION GuerrillaMail.com');
+                    add_response($client_id, '.');
+                }
+                elseif (stripos($input, 'STAT') === 0) {
                     if ($stat = $PopDb->getStat($clients[$client_id]['user'])) {
                         add_response($client_id, GPOP_RESPONSE_OK . ' ' . $stat[0] . ' ' . $stat[1]);
                     } else {
@@ -508,7 +540,7 @@ function process_pop($client_id)
                     }
                 } elseif (stripos($input, 'DELE') === 0) {
                     $toks = explode(' ', $input);
-                    if ((sizeof($toks) == 2) && ($msg = $PopDb->MsgMarkDel($clients[$client_id]['user'], $toks[1]))) {
+                    if ((sizeof($toks) == 2) && ($PopDb->MsgMarkDel($clients[$client_id]['user'], $toks[1]))) {
                         add_response($client_id, GPOP_RESPONSE_OK);
                     } else {
                         add_response($client_id, GPOP_RESPONSE_ERROR);
@@ -631,8 +663,8 @@ function add_response($client_id, $str = null)
         if (substr($str, -2) !== "\r\n") {
             $str .= "\r\n";
         }
-
         $clients[$client_id]['response'] .= $str;
+        log_line("S:".$str);
     } elseif ($str === null) {
         // clear
         $clients[$client_id]['response'] = null;
@@ -674,6 +706,7 @@ function read_line(&$clients, $client_id)
         $buf = $clients[$client_id]['read_buffer'];
         $clients[$client_id]['read_buffer'] = '';
         $clients[$client_id]['read_buffer_ready'] = false;
+        log_line('C:'.$buf);
         return $buf;
     }
     return false;
