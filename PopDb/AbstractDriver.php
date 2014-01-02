@@ -1,7 +1,7 @@
 <?php
 
 
-class AbstractDriver implements  PopDb_DriverInterface  {
+class PopDb_AbstractDriver implements  PopDb_DriverInterface  {
 
     const ERROR_IN_USE = 1;
 

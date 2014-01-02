@@ -371,7 +371,7 @@ function process_pop($client_id)
 
     //$PopDb = PopDb_Mapper::getInstance(GPOP_DB_MAPPER);
     /**
-     * @var $PopDb AbstractDriver
+     * @var $PopDb PopDb_AbstractDriver
      */
     $PopDb = $clients[$client_id]['db'];
     switch ($clients[$client_id]['state']) {
