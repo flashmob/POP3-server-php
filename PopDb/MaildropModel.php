@@ -3,7 +3,7 @@
 
 class PopDb_MaildropModel
 {
-    public static $ALLOW_DELETE = true;
+    public static $ALLOW_DELETE = GPOP_ALLOW_DELETE;
     protected $list = array();
     /**
      * @var PopDb_DriverInterface
@@ -53,6 +53,7 @@ class PopDb_MaildropModel
             return false;
         }
         if (isset(self::$users[$user])) {
+log_line('this user is in use:' . self::$users[$user], 1);
             $this->setError(self::ERROR_IN_USE);
             return false;
         } else {
@@ -159,9 +160,6 @@ class PopDb_MaildropModel
      */
     public function MsgMarkDel($username, $pop_id)
     {
-        if (!static::$ALLOW_DELETE) {
-            return 0;
-        }
         $inbox = $this->getInbox($username);
         if (!$inbox) {
             return false;
@@ -222,6 +220,9 @@ class PopDb_MaildropModel
      */
     public function commitDelete($username)
     {
+        if (!static::$ALLOW_DELETE) {
+            return true; // dont actually delete
+        }
         $inbox = $this->getInbox($username);
         if (!$inbox) {
             return false;
@@ -247,8 +248,8 @@ log_line("mark del empty", 1);
 
     public function getErrorMsg()
     {
-        if (!empty($error_msg[$this->error])) {
-            return $error_msg[$this->error];
+        if (!empty($this->error_msg[$this->error])) {
+            return $this->error_msg[$this->error];
         }
         return false;
     }

@@ -21,6 +21,7 @@ define('GPOP_LOG_FILE', $log_file);
 define('GPOP_VERBOSE', $verbose);
 define('GPOP_TIMEOUT', 60); // how many seconds before timeout.
 
+define('GPOP_ALLOW_DELETE', true);
 
 // ssl settings
 

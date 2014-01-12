@@ -424,7 +424,7 @@ function process_pop($client_id)
                     if ($PopDb->getError() == PopDb_MaildropModel::ERROR_IN_USE) {
                         add_response($client_id, GPOP_RESPONSE_ERROR . ' ' . $PopDb->getErrorMsg());
                     } else {
-                        add_response($client_id, GPOP_RESPONSE_ERROR);
+                        add_response($client_id, GPOP_RESPONSE_ERROR.' auth error');
                     }
 
                 } elseif (stripos($input, 'APOP') === 0) {
@@ -561,7 +561,7 @@ function process_pop($client_id)
                     if ((sizeof($toks) == 2) && ($PopDb->MsgMarkDel($clients[$client_id]['user'], $toks[1]))) {
                         add_response($client_id, GPOP_RESPONSE_OK);
                     } else {
-                        add_response($client_id, GPOP_RESPONSE_ERROR);
+                        add_response($client_id, GPOP_RESPONSE_ERROR.' message '.$toks[1].' already deleted');
                     }
                 } elseif (stripos($input, 'NOOP') === 0) {
                     add_response($client_id, GPOP_RESPONSE_OK);
