@@ -2,6 +2,19 @@
 
 /*
 
+todo fix list
+
+C:LIST
+SELECT
+                    `size`, `mail_id`, `hash`
+                FROM
+                    `gm2_mail`
+                WHERE
+                    `mail_address_id` = 'ba42c1b529d1366f5880ae7c46c82ecd' ORDER BY mail_id ASC LIMIT 50
+S:-ERR
+
+
+
 Guerrilla POP3d
 An minimalist, event-driven I/O, non-blocking POP3 server in PHP
 
@@ -52,7 +65,7 @@ ini_set('memory_limit', '512M');
 if (isset($argc) && ($argc > 1)) {
     foreach ($argv as $i => $arg) {
         if ($arg == '-p') {
-            $listen_port = (int) $argv[$i + 1];
+            $listen_port = (int)$argv[$i + 1];
         }
         if ($arg == '-l') {
             $log_file = $argv[$i + 1];
@@ -90,7 +103,7 @@ if (!isset($verbose)) {
 
 if (file_exists(dirname(__FILE__) . '/popd-config.php')) {
     // place a copy of the define statements in to popd-config.php
-    require_once (dirname(__FILE__) . '/popd-config.php');
+    require_once(dirname(__FILE__) . '/popd-config.php');
 } else {
     // defaults if pop-config.php is not available
     log_line('Loading defaults', 1);
@@ -161,7 +174,7 @@ define ('GPOP_RESPONSE_OK', '+OK');
 define ('GPOP_RESPONSE_ERROR', '-ERR');
 define ('GPOP_RESPONSE_TERMINATE', ".\r\n");
 
-$db = PopDb_Mapper::getInstance(GPOP_DB_MAPPER);
+$db = PopDb_Factory::getInstance(GPOP_DB_MAPPER);
 if ($db->testSettings() === false) {
     die('Please check your MySQL settings');
 }
@@ -271,7 +284,7 @@ function ev_accept($socket, $flag, $base)
     $clients[$next_id]['socket'] = $connection;
     $clients[$next_id]['ev_buffer'] = $buffer; // new socket
     $clients[$next_id]['state'] = 0;
-    $clients[$next_id]['db'] = PopDb_Mapper::getInstance(GPOP_DB_MAPPER);
+    $clients[$next_id]['db'] = PopDb_Factory::getInstance(GPOP_DB_MAPPER);
     $clients[$next_id]['user'] = '';
     $clients[$next_id]['pass'] = '';
     $clients[$next_id]['error_c'] = 0;
@@ -369,9 +382,9 @@ function process_pop($client_id)
     global $clients;
 
 
-    //$PopDb = PopDb_Mapper::getInstance(GPOP_DB_MAPPER);
+    //$PopDb = PopDb_Factory::getInstance(GPOP_DB_MAPPER);
     /**
-     * @var $PopDb PopDb_AbstractDriver
+     * @var $PopDb PopDb_MaildropModel
      */
     $PopDb = $clients[$client_id]['db'];
     switch ($clients[$client_id]['state']) {
@@ -410,14 +423,19 @@ function process_pop($client_id)
                     }
 
                     if (!empty($clients[$client_id]['user']) && !empty($clients[$client_id]['pass'])) {
-                        if ($PopDb->auth($clients[$client_id]['user'], $clients[$client_id]['pass'], $clients[$client_id]['address'])) {
+                        if ($PopDb->auth(
+                            $clients[$client_id]['user'],
+                            $clients[$client_id]['pass'],
+                            $clients[$client_id]['address']
+                        )
+                        ) {
                             $clients[$client_id]['state'] = 2;
                             add_response($client_id, GPOP_RESPONSE_OK);
                             break;
                         }
                     }
-                    if ($PopDb->getError() == AbstractDriver::ERROR_IN_USE) {
-                        add_response($client_id, GPOP_RESPONSE_ERROR.' '.$PopDb->getErrorMsg());
+                    if ($PopDb->getError() == PopDb_MaildropModel::ERROR_IN_USE) {
+                        add_response($client_id, GPOP_RESPONSE_ERROR . ' ' . $PopDb->getErrorMsg());
                     } else {
                         add_response($client_id, GPOP_RESPONSE_ERROR);
                     }
@@ -427,7 +445,13 @@ function process_pop($client_id)
                     $toks = explode(' ', $input);
                     if (sizeof($toks) == 3) {
 
-                        if ($PopDb->auth($toks[1], $toks[2], $clients[$client_id]['address'], $clients[$client_id]['ts'])) {
+                        if ($PopDb->auth(
+                            $toks[1],
+                            $toks[2],
+                            $clients[$client_id]['address'],
+                            $clients[$client_id]['ts']
+                        )
+                        ) {
                             $clients[$client_id]['state'] = 2;
                             add_response($client_id, GPOP_RESPONSE_OK);
                             $clients[$client_id]['user'] = $toks[1];
@@ -436,19 +460,20 @@ function process_pop($client_id)
                             break;
                         }
                     }
-                    if ($PopDb->getError() == AbstractDriver::ERROR_IN_USE) {
-                        add_response($client_id, GPOP_RESPONSE_ERROR.' '.$PopDb->getErrorMsg());
+                    if ($PopDb->getError() == PopDb_MaildropModel::ERROR_IN_USE) {
+                        add_response($client_id, GPOP_RESPONSE_ERROR . ' ' . $PopDb->getErrorMsg());
                     } else {
                         add_response($client_id, GPOP_RESPONSE_ERROR);
                     }
                 } elseif (stripos($input, 'CAPA') === 0) {
                     // http://www.ietf.org/rfc/rfc2449.txt
-                    add_response($client_id, GPOP_RESPONSE_OK.' Capability list follows');
+                    add_response($client_id, GPOP_RESPONSE_OK . ' Capability list follows');
                     add_response($client_id, 'USER'); // auth only
                     //add_response($client_id, 'SASL CRAM-MD5 KERBEROS_V4'); // auth
                     add_response($client_id, 'RESP-CODES'); // both
-                    add_response($client_id, 'LOGIN-DELAY 5'); // both, seconds between re-auth
                     add_response($client_id, 'EXPIRE 1'); // both, deletion policy (days) days
+                    add_response($client_id, 'LOGIN-DELAY 5'); // both, seconds between re-auth
+                    add_response($client_id, 'TOP');
                     add_response($client_id, 'UIDL'); // both
                     add_response($client_id, 'IMPLEMENTATION GuerrillaMail.com');
                     add_response($client_id, '.');
@@ -465,15 +490,15 @@ function process_pop($client_id)
             if ($input) {
                 if (stripos($input, 'CAPA') === 0) {
                     // http://www.ietf.org/rfc/rfc2449.txt
-                    add_response($client_id, GPOP_RESPONSE_OK.' Capability list follows');
+                    add_response($client_id, GPOP_RESPONSE_OK . ' Capability list follows');
                     add_response($client_id, 'RESP-CODES'); // both
                     add_response($client_id, 'LOGIN-DELAY 5'); // both, seconds between re-auth
                     add_response($client_id, 'EXPIRE 1'); // both, deletion policy (days) days
+                    add_response($client_id, 'TOP');
                     add_response($client_id, 'UIDL'); // both
                     add_response($client_id, 'IMPLEMENTATION GuerrillaMail.com');
                     add_response($client_id, '.');
-                }
-                elseif (stripos($input, 'STAT') === 0) {
+                } elseif (stripos($input, 'STAT') === 0) {
                     if ($stat = $PopDb->getStat($clients[$client_id]['user'])) {
                         add_response($client_id, GPOP_RESPONSE_OK . ' ' . $stat[0] . ' ' . $stat[1]);
                     } else {
@@ -503,12 +528,19 @@ function process_pop($client_id)
                             add_response($client_id, GPOP_RESPONSE_ERROR . ' no such message');
                         }
                     } else {
-                        if ($list = $PopDb->getList($clients[$client_id]['user'])) {
-                            add_response(
-                                $client_id,
-                                GPOP_RESPONSE_OK . ' ' . count($list['messages']) . ' messages (' . $list['octets']
-                                . ' octets)'
-                            );
+                        if (false !== ($list = $PopDb->getList($clients[$client_id]['user']))) {
+                            if (!empty($list['messages'])) {
+                                add_response(
+                                    $client_id,
+                                    GPOP_RESPONSE_OK . ' ' . count($list['messages']) . ' messages (' . $list['octets']
+                                    . ' octets)'
+                                );
+                            } else {
+                                add_response(
+                                    $client_id,
+                                    GPOP_RESPONSE_OK . ' 0 messages (0 octets)'
+                                );
+                            }
 
                             foreach ($list['messages'] as $msg) {
                                 add_response($client_id, $msg['id'] . ' ' . $msg['octets']);
@@ -560,10 +592,12 @@ function process_pop($client_id)
                             add_response($client_id, GPOP_RESPONSE_ERROR . ' no such message');
                         }
                     } else {
-                        if ($list = $PopDb->getList($clients[$client_id]['user'])) {
+                        if (false !== ($list = $PopDb->getList($clients[$client_id]['user']))) {
                             add_response($client_id, GPOP_RESPONSE_OK);
-                            foreach ($list['messages'] as $msg) {
-                                add_response($client_id, $msg['id'] . ' ' . $msg['checksum']);
+                            if (!empty($list)) {
+                                foreach ($list['messages'] as $msg) {
+                                    add_response($client_id, $msg['id'] . ' ' . $msg['checksum']);
+                                }
                             }
                             add_response($client_id, '.');
                         } else {
@@ -576,29 +610,28 @@ function process_pop($client_id)
                     $toks = explode(' ', $input);
                     if ((sizeof($toks) == 3) && ($msg = $PopDb->getMsg($clients[$client_id]['user'], $toks[1]))) {
                         add_response($client_id, GPOP_RESPONSE_OK);
-
+                        // send the header
                         $header_end_pos = strpos($msg, "\r\n\r\n");
                         $header = substr($msg, 0, $header_end_pos);
                         add_response($client_id, $header);
                         add_response($client_id, "\r\n"); //blank line separate header from rest
                         $lines = explode("\r\n", substr($msg, $header_end_pos + 4));
-
+                        // $toks[2] is the number of preview lines from body
                         $line_count = 0;
-                        foreach ($lines as $line) {
-
-                            if ($line == '') {
-                                add_response($client_id, "\r\n");
-                            } elseif (strpos($line, '.') === 0) {
-                                // byte-stuffing with termination marker
-                                add_response($client_id, "." . $line);
-                            } else {
-                                add_response($client_id, $line);
-                            }
-
-                            $line_count++;
-
-                            if ($line_count == $toks[2]) {
-                                break;
+                        if ($toks[2]>0) {
+                            foreach ($lines as $line) {
+                                if ($line == '') {
+                                    add_response($client_id, "\r\n");
+                                } elseif (strpos($line, '.') === 0) {
+                                    // byte-stuffing with termination marker
+                                    add_response($client_id, "." . $line);
+                                } else {
+                                    add_response($client_id, $line);
+                                }
+                                $line_count++;
+                                if ($line_count == $toks[2]) {
+                                    break;
+                                }
                             }
                         }
                         add_response($client_id, '.');
@@ -607,9 +640,7 @@ function process_pop($client_id)
                     }
 
                 } elseif (stripos($input, 'QUIT') === 0) {
-
                     $PopDb->commitDelete($clients[$client_id]['user']);
-
                     kill_client($client_id, GPOP_RESPONSE_OK . ' dewey POP3 server signing off');
                 } else {
                     add_response($client_id, GPOP_RESPONSE_ERROR);
@@ -664,7 +695,7 @@ function add_response($client_id, $str = null)
             $str .= "\r\n";
         }
         $clients[$client_id]['response'] .= $str;
-        log_line("S:".$str);
+        log_line("S:" . $str);
     } elseif ($str === null) {
         // clear
         $clients[$client_id]['response'] = null;
@@ -706,7 +737,7 @@ function read_line(&$clients, $client_id)
         $buf = $clients[$client_id]['read_buffer'];
         $clients[$client_id]['read_buffer'] = '';
         $clients[$client_id]['read_buffer_ready'] = false;
-        log_line('C:'.$buf);
+        log_line('C:' . $buf);
         return $buf;
     }
     return false;

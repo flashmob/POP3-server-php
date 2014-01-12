@@ -4,27 +4,14 @@ interface PopDb_DriverInterface
 {
     public function testSettings();
 
-    // verify USER, PASS or APOP
-    public function auth($username, $password, $ip_address, $ts = '');
+    public function getInbox($username, $ip = '');
 
-    // STAT command
-    public function getStat($username);
+    public function deleteMarked($address_id, $mail_id_list);
 
-    // LIST command
-    public function getList($username, $message_id = '');
+    public function fetchRawEmail($address_id, $mail_id);
 
-    // DELE command
-    public function MsgMarkDel($username, $message_id);
+    public function isMsgExists($address_id, $mail_id);
 
-    // RSET command
-    public function resetDeleted($username);
-
-    // for TOP and RETR commands
-    public function getMsg($username, $id);
-
-    // QUIT - delete all on the delete list
-    public function commitDelete($username);
-
-    public function getError();
+    public function getInboxList($address_id, $mail_id='');
 
 }

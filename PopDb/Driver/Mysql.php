@@ -1,55 +1,37 @@
 <?php
 
-/**
- *
- * This is an example MySQL driver
- * Change to what ever your database is like.
- *
- * Basic schema
- * (note: message_id is an md5 checksum of the data)
- *
- *
- *   CREATE TABLE IF NOT EXISTS `mail` (
- *       `mail_id` int(11) NOT NULL AUTO_INCREMENT,
- *       `inbox_id` int(11) NOT NULL,
- *       `pop_id` int(11) NOT NULL,
- *       `message` text NOT NULL,
- *       `inbox_id` int(11) NOT NULL,
- *       `size` int(11) NOT NULL,
- *       `data` LONGTEXT NOT NULL,
- *       PRIMARY KEY (`mail_id`),
- *       KEY `message_id` (`message_id`),
- *       KEY `pop` (`folder_id`,`pop_id`),
- *   ) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
- *
- *   CREATE TABLE IF NOT EXISTS `inboxes` (
- *       `inbox_id` int(11) NOT NULL AUTO_INCREMENT,
- *       `username` varchar(100) NOT NULL,
- *
- *       `from_date` datetime NOT NULL,
- *       `to_date` datetime NOT NULL,
- *       `size` int(11) NOT NULL,
- *       `item_count` int(11) NOT NULL,
- *       `pass` varchar(32) not null,
- *       PRIMARY KEY (`folder_id`)
- *   ) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
- *
- *
- */
 
-class PopDb_Driver_Mysql extends AbstractDriver implements  PopDb_DriverInterface
+class PopDb_Driver_Mysql implements PopDb_DriverInterface
 {
 
-    protected $markedDeleted = array();
+    /**
+     * @var \PDO
+     */
+    private static $link = null;
 
     public function testSettings()
     {
-
-        if ($this->get_mysql_link() === false) {
+        if ($this->get_db_link() === false) {
             return false;
         }
         return true;
+    }
 
+    /**
+     * @return bool
+     */
+    protected function ping()
+    {
+        if (!is_object(self::$link)) {
+            return false;
+        }
+        try {
+            self::$link->query('SELECT 1');
+        } catch (PDOException $e) {
+            log_line($e->getMessage(), 1);
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -62,18 +44,16 @@ class PopDb_Driver_Mysql extends AbstractDriver implements  PopDb_DriverInterfac
      *
      * @param bool $reconnect True if you want the link to re-connect
      *
-     * @return bool|resource
+     * @return bool|PDO
      */
-    private function &get_mysql_link($reconnect = false)
+    private function get_db_link($reconnect = false)
     {
-
-        static $link;
         global $DB_ERROR;
         static $last_ping_time;
         if (isset($last_ping_time)) {
             // more than a minute ago?
             if (($last_ping_time + 30) < time()) {
-                if (false === mysql_ping($link)) {
+                if (false === $this->ping()) {
                     $reconnect = true; // try to reconnect
                 }
                 $last_ping_time = time();
@@ -81,249 +61,196 @@ class PopDb_Driver_Mysql extends AbstractDriver implements  PopDb_DriverInterfac
         } else {
             $last_ping_time = time();
         }
-
-        if (isset($link) && !$reconnect) {
-            return $link;
+        if (isset(self::$link) && !$reconnect) {
+            return self::$link;
         }
-
         $DB_ERROR = '';
-        $link = mysql_connect(GPOP_MYSQL_HOST, GPOP_MYSQL_USER, GPOP_MYSQL_PASS) or
-            $DB_ERROR = "Couldn't connect to server.";
-        mysql_select_db(GPOP_MYSQL_DB, $link) or $DB_ERROR = "Couldn't select database.";
-        mysql_query("SET NAMES utf8", $link);
-
-        if ($DB_ERROR) {
-            log_line($DB_ERROR, 1);
+        try {
+            self::$link = new PDO(
+                'mysql:host=' . GPOP_MYSQL_HOST . ';dbname=' . GPOP_MYSQL_DB . ';charset=utf8',
+                GPOP_MYSQL_USER,
+                GPOP_MYSQL_PASS);
+            self::$link->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        } catch (PDOException $e) {
+            log_line($e->getMessage(), 1);
             return false;
         }
-
-        return $link;
-
+        return self::$link;
     }
 
-    /**
-     * Look up the database to authenticate the password
-     *
-     * @param string $user     in the following format: folder8+5@dbxexpress.com
-     * @param string $password Interprets $password as APOP if $ts is passed, otherwise cleartext
-     * @param string $ip_address
-     * @param string $ts       Timestamp following APOP spec
-     *
-     * @return bool
-     */
-    public function auth($user, $password, $ip_address, $ts = '')
-    {
-
-        $valid = false;
-
-        $inbox = $this->getInbox($user);
-
-        if (!$inbox) {
-            return false;
-        }
-
-        // apop else plain auth
-        if ($ts && (md5($ts . $inbox['pass']) == $password)) {
-            $valid = true;
-        } elseif (!$ts && ($inbox['pass'] == $password)) {
-            $valid = true;
-        }
-        return $valid;
-    }
-
-    /**
-     * Returns item_count and size for the STAT command
-     *
-     * @param $username
-     *
-     * @return array
-     */
-    public function getStat($username)
-    {
-        $inbox = $this->getInbox($username);
-
-        if (!$inbox) {
-            return false;
-        }
-
-        return array($inbox['item_count'], $inbox['size']);
-
-    }
-
-
-    /**
-     * Returns an array of 'messages' with 'id', 'octets' (size), and checksum (md5)
-     *
-     * @param string     $username
-     * @param string     $pop_id unique message id
-     *
-     * @internal param int|string $message_id if given, returns a single message. false if not found
-     *
-     * @return bool
-     */
-    public function getList($username, $pop_id = '')
-    {
-        $link = $this->get_mysql_link();
-        $pop_id = (int) $pop_id;
-        $inbox = $this->getInbox($username);
-
-        if (!$inbox) {
-            return false;
-        }
-        $sql = "SELECT `pop_id`, `size`, `message_id`  FROM  `mail` ";
-        $sql .= "WHERE inbox_id = " . $inbox['inbox_id'];
-        if ($pop_id) {
-            $sql .= ' AND pop_id = ' . $pop_id;
-        }
-        $sql .= " ORDER BY pop_id";
-
-        $ret = false;
-
-        if ($result = mysql_query($sql, $link)) {
-            if (mysql_num_rows($result)) {
-                $total_size = 0;
-                while ($row = mysql_fetch_assoc($result)) {
-                    $total_size += $row['size'];
-                    $ret['messages'][] = array(
-                        'id'      => $row['pop_id'],
-                        'octets'  => $row['size'],
-                        'checksum'=> $row['message_id']
-                    );
-                }
-                $ret['octets'] = $total_size;
-            }
-        }
-
-        if ($pop_id && empty($ret['messages'])) {
-            // no such message!
-            return false;
-        }
-
-        return $ret;
-    }
-
-    /**
-     * Do not actually delete the message, just confirm that it exists and put it on deletion list
-     *
-     * @param $username
-     * @param $pop_id
-     *
-     * @internal param $message_id
-     *
-     * @return int 0 if not found, 1 if found
-     */
-    public function MsgMarkDel($username, $pop_id)
-    {
-        $link = $this->get_mysql_link();
-        $inbox = $this->getInbox($username);
-
-        if (!$inbox) {
-            return false;
-        }
-        $pop_id = (int) $pop_id;
-
-        $sql = "SELECT mail_id FROM  `mail` ";
-        $sql .= "WHERE inbox_id = " . $inbox['inbox_id'];
-        $sql .= ' AND pop_id = ' . $pop_id;
-        $result = mysql_query($sql, $link) or error_log(mysql_error());
-        if ($count = mysql_num_rows($result)) {
-            $this->markedDeleted[$username][] = $pop_id;
-        }
-        return $count;
-
-    }
-
-    /**
-     * Abandon delete
-     *
-     * @param string $username
-     */
-    public function resetDeleted($username)
-    {
-        unset($this->markedDeleted[$username]);
-    }
-
-    /**
-     * @param string $username
-     * @param        $pop_id
-     *
-     * @internal param int $id
-     *
-     * @return bool|string
-     */
-    public function getMsg($username, $pop_id)
-    {
-        $link = $this->get_mysql_link();
-        $inbox = $this->getInbox($username);
-
-        if (!$inbox) {
-            return false;
-        }
-        $pop_id = (int) $pop_id;
-
-        $sql = "SELECT `data` FROM  `mail` ";
-        $sql .= "WHERE inbox_id = " . $inbox['inbox_id'];
-        $sql .= ' AND pop_id = ' . $pop_id;
-        $result = mysql_query($sql, $link) or error_log(mysql_error());
-        if (mysql_num_rows($result)) {
-            $row = mysql_fetch_assoc($result);
-            return $row['data'];
-        }
-        return false;
-    }
-
-    /**
-     * Delete all messages on the delete list
-     *
-     * @param string $username
-     *
-     * @return bool|int
-     */
-    public function commitDelete($username)
-    {
-        $link = $this->get_mysql_link();
-        $affected = 0;
-        $inbox = $this->getInbox($username);
-
-        if (!$inbox) {
-            return false;
-        }
-
-        if (empty($this->markedDeleted[$username])) {
-            return true;
-        }
-        $arrays = array_chunk($this->markedDeleted[$username], 50);
-        foreach ($arrays as $id_list) {
-
-            // sql delete each msg
-
-            $sql = "SELECT `data` FROM  `mail` ";
-            $sql .= "WHERE inbox_id = " . $inbox['inbox_id'];
-            $sql .= ' AND mail_id IN (' . explode(', ', $id_list) . ')';
-            mysql_query($sql, $link) or error_log(mysql_error());
-            $affected += mysql_affected_rows();
-
-        }
-        unset ($this->markedDeleted[$username]);
-        return $affected;
-
-    }
 
 
     /**
      * @param $username
+     *
+     * @param $ip
      *
      * @return array|bool
      */
-    private function getInbox($username)
+    public function getInbox($username, $ip = '')
     {
-        $link = $this->get_mysql_link();
-        $sql = "SELECT * FROM `inboxes` WHERE `username` = '".mysql_real_escape_string($username)."'";
-        $result = mysql_query($sql, $link);
-        if (mysql_num_rows($result)) {
-            return mysql_fetch_assoc($result);
+        if (strpos($username, '@') !== false) {
+            $username = strstr($username, '@', true);
+        }
+        $ret = false;
+        $link = $this->get_db_link();
+        $sql
+            = "
+            SELECT
+                sum(`size`) as GSIZE, count(*) as GCOUNT
+            FROM
+              gm2_mail
+            WHERE
+              recipient = ?
+        ";
+        try {
+            $stmt = $link->prepare($sql);
+            $stmt->execute(array($username));
+            if ($stat = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $ret = array(
+                    'pass'       => 'abc123',
+                    'inbox_id'   => $username,
+                    'item_count' => $stat['GCOUNT'],
+                    'size'       => $stat['GSIZE'],
+                    'address_id' => $stat['address_id']
+                );
+            }
+            return $ret;
+        } catch (PDOException $e) {
+            log_line($e->getMessage(), 1);
         }
         return false;
-
     }
+
+
+    /**
+     * @param $address_id
+     * @param $mail_id_list
+     *
+     *
+     * @return int
+     */
+    public function deleteMarked($address_id, $mail_id_list)
+    {
+        $affected = 0;
+        $link = $this->get_db_link();
+        $arrays = array_chunk($mail_id_list, 50);
+        try {
+
+            foreach ($arrays as $id_list) {
+                $sql = "DELETE FROM
+                        `gm2_mail`
+                    WHERE
+                        mail_address_id = ".$link->quote($address_id)."
+                        AND mail_id IN (".implode(',', $id_list).") ";
+                $stmt = $link->query($sql);
+                $affected += $stmt->rowCount();
+            }
+        } catch (PDOException $e) {
+            log_line(print_r($e, true), 1);
+            return false;
+        }
+        return $affected;
+    }
+
+    /**
+     * @param $address_id
+     * @param $mail_id
+     *
+     * @return bool
+     */
+    public function fetchRawEmail($address_id, $mail_id)
+    {
+        $link = $this->get_db_link();
+        $sql
+            = "
+            SELECT
+              `raw_email`
+            FROM
+              `gm2_mail`
+            WHERE
+              mail_address_id = ?
+              AND mail_id = ? ";
+        try {
+            $stmt = $link->prepare($sql);
+            $stmt->execute(array($address_id, $mail_id));
+            if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                log_line('works'.strlen($row['raw_email']));
+                return $row['raw_email'];
+            }
+        } catch (PDOException $e) {
+            log_line(print_r($e, true), 1);
+        }
+        log_line("fetchRawEmail($address_id, $mail_id)", 1);
+        return false;
+    }
+
+    /**
+     * @param $address_id
+     * @param $mail_id
+     *
+     * @return int
+     */
+    public function isMsgExists($address_id, $mail_id)
+    {
+        $link = $this->get_db_link();
+        $count = 0;
+        $sql
+            = "SELECT
+                    mail_id
+                FROM
+                  `gm2_mail`
+                WHERE
+                    mail_address_id = ?
+                    AND mail_id = ? ";
+        try {
+            $stmt = $link->prepare($sql);
+            $stmt->execute(
+                array(
+                    $address_id,
+                    $mail_id
+                )
+            );
+            $count = $stmt->rowCount();
+        } catch (PDOException $e) {
+            log_line($e->getMessage(), 1);
+        }
+        return $count;
+    }
+
+    /**
+     * @param        $address_id
+     * @param string $mail_id
+     *
+     * @return array
+     */
+    public function getInboxList($address_id, $mail_id='') {
+        $link = $this->get_db_link();
+        $list = array();
+        $sql
+            = "SELECT
+                    `size`, `mail_id`, `hash`
+                FROM
+                    `gm2_mail`
+                WHERE
+                    `mail_address_id` = ?";
+        if ($mail_id) {
+            $sql .= ' AND mail_id = ' . $link->quote($mail_id);
+        }
+        $sql .= " ORDER BY mail_id ASC LIMIT 50";
+        try {
+            $stmt = $link->prepare($sql);
+            if ($stmt->execute(array($address_id))) {
+                if ($stmt->rowCount()) {
+                    $list = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                }
+            }
+        } catch (PDOException $e) {
+            log_line(print_r($e, true), 1);
+        }
+        return $list;
+    }
+
+
+
 }
