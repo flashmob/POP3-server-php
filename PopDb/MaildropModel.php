@@ -10,7 +10,7 @@ class PopDb_MaildropModel
      */
     protected $store = null;
     const ERROR_IN_USE = 1;
-
+    private static $users = array();
     protected $error_msg
         = array(
             self::ERROR_IN_USE => '[IN-USE] Do you have another POP session running?'
@@ -45,21 +45,37 @@ class PopDb_MaildropModel
      *
      * @return bool
      */
-    public function auth($user, $password, $ip, $ts = '')
+    public function login($user, $password, $ip, $ts = '')
     {
         $valid = false;
         $inbox = $this->getInbox($user, $ip);
         if (!$inbox) {
             return false;
         }
+        if (isset(self::$users[$user])) {
+            $this->setError(self::ERROR_IN_USE);
+            return false;
+        } else {
+            $this->setError(false);
+        }
         // apop else plain auth
-        if ($ts && (md5($ts . $inbox['pass']) == $password)) {
+        if ($ts && ($this->secureCompare(md5($ts . $inbox['pass']), $password))) {
             $valid = true;
-        } elseif (!$ts && ($inbox['pass'] == $password)) {
+        } elseif (!$ts && $this->secureCompare($inbox['pass'], $password)) {
             $valid = true;
+        }
+        if ($valid) {
+            self::$users[$user] = true;
         }
         log_line('auth stat:' . $valid);
         return $valid;
+    }
+
+    /**
+     * @param $user
+     */
+    public function logout($user) {
+        unset(self::$users[$user]);
     }
 
     /**
@@ -220,6 +236,10 @@ log_line("mark del empty", 1);
         return $affected;
     }
 
+    private function setError($errno) {
+        $this->error = $errno;
+    }
+
     public function getError()
     {
         return $this->error;
@@ -255,4 +275,17 @@ log_line("mark del empty", 1);
         }
         return $mail_id;
     }
+
+    private function secureCompare($a, $b)
+    {
+        if (strlen($a) !== strlen($b)) {
+            return false;
+        }
+        $result = 0;
+        for ($i = 0; $i < strlen($a); $i++) {
+            $result |= ord($a[$i]) ^ ord($b[$i]);
+        }
+        return $result == 0;
+    }
+
 }

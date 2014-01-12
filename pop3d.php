@@ -2,25 +2,12 @@
 
 /*
 
-todo fix list
-
-C:LIST
-SELECT
-                    `size`, `mail_id`, `hash`
-                FROM
-                    `gm2_mail`
-                WHERE
-                    `mail_address_id` = 'ba42c1b529d1366f5880ae7c46c82ecd' ORDER BY mail_id ASC LIMIT 50
-S:-ERR
-
-
-
 Guerrilla POP3d
 An minimalist, event-driven I/O, non-blocking POP3 server in PHP
 
 Copyright (c) 2014 Flashmob, GuerrillaMail.com
 
-Version: 1.0
+Version: 1.5
 Author: Flashmob, GuerrillaMail.com
 Contact: flashmob@gmail.com
 License: MIT
@@ -328,7 +315,7 @@ function ev_error($buffer, $error, $id)
     event_buffer_disable($clients[$id]['ev_buffer'], EV_READ | EV_WRITE);
     event_buffer_free($clients[$id]['ev_buffer']);
     fclose($clients[$id]['socket']);
-    unset($clients[$id]);
+    remove_client($id);
 }
 
 function ev_write($buffer, $id)
@@ -341,7 +328,7 @@ function ev_write($buffer, $id)
         event_buffer_disable($clients[$id]['ev_buffer'], EV_READ | EV_WRITE);
         event_buffer_free($clients[$id]['ev_buffer']);
         fclose($clients[$id]['socket']);
-        unset($clients[$id]);
+        remove_client($id);
     }
 }
 
@@ -423,7 +410,7 @@ function process_pop($client_id)
                     }
 
                     if (!empty($clients[$client_id]['user']) && !empty($clients[$client_id]['pass'])) {
-                        if ($PopDb->auth(
+                        if ($PopDb->login(
                             $clients[$client_id]['user'],
                             $clients[$client_id]['pass'],
                             $clients[$client_id]['address']
@@ -445,7 +432,7 @@ function process_pop($client_id)
                     $toks = explode(' ', $input);
                     if (sizeof($toks) == 3) {
 
-                        if ($PopDb->auth(
+                        if ($PopDb->login(
                             $toks[1],
                             $toks[2],
                             $clients[$client_id]['address'],
@@ -469,7 +456,6 @@ function process_pop($client_id)
                     // http://www.ietf.org/rfc/rfc2449.txt
                     add_response($client_id, GPOP_RESPONSE_OK . ' Capability list follows');
                     add_response($client_id, 'USER'); // auth only
-                    //add_response($client_id, 'SASL CRAM-MD5 KERBEROS_V4'); // auth
                     add_response($client_id, 'RESP-CODES'); // both
                     add_response($client_id, 'EXPIRE 1'); // both, deletion policy (days) days
                     add_response($client_id, 'LOGIN-DELAY 5'); // both, seconds between re-auth
@@ -618,7 +604,7 @@ function process_pop($client_id)
                         $lines = explode("\r\n", substr($msg, $header_end_pos + 4));
                         // $toks[2] is the number of preview lines from body
                         $line_count = 0;
-                        if ($toks[2]>0) {
+                        if ($toks[2] > 0) {
                             foreach ($lines as $line) {
                                 if ($line == '') {
                                     add_response($client_id, "\r\n");
@@ -742,5 +728,12 @@ function read_line(&$clients, $client_id)
     }
     return false;
 
+}
+
+
+function remove_client($id) {
+    global $clients;
+    $clients[$id]['db']->logout($clients[$id]['user']);
+    unset($clients[$id]);
 }
 
