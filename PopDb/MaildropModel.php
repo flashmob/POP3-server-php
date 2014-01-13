@@ -53,7 +53,6 @@ class PopDb_MaildropModel
             return false;
         }
         if (isset(self::$users[$user])) {
-log_line('this user is in use:' . self::$users[$user], 1);
             $this->setError(self::ERROR_IN_USE);
             return false;
         } else {
