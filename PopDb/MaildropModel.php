@@ -228,7 +228,6 @@ class PopDb_MaildropModel
         }
         $address_id = $inbox['address_id'];
         if (empty($this->markedDeleted[$username])) {
-log_line("mark del empty", 1);
             return true;
         }
         $affected = $this->store->deleteMarked($address_id, $this->markedDeleted[$username]);
