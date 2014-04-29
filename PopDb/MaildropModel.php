@@ -38,7 +38,7 @@ class PopDb_MaildropModel
     /**
      * Look up the database to authenticate the password
      *
-     * @param string $user     in the following format: folder8+5@dbxexpress.com
+     * @param string $user     user id, i.e the email address of the user's inbox
      * @param string $password Interprets $password as APOP if $ts is passed, otherwise cleartext
      * @param        $ip
      * @param string $ts       Timestamp following APOP spec

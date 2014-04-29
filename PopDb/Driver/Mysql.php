@@ -18,6 +18,7 @@ class PopDb_Driver_Mysql implements PopDb_DriverInterface
     }
 
     /**
+     * This is used to keep the connection open, since it's used in a long running process
      * @return bool
      */
     protected function ping()
@@ -81,6 +82,7 @@ class PopDb_Driver_Mysql implements PopDb_DriverInterface
 
 
     /**
+     * Get the details about the inbox
      * @param $username
      *
      * @param $ip
@@ -108,7 +110,7 @@ class PopDb_Driver_Mysql implements PopDb_DriverInterface
             $stmt->execute(array($username));
             if ($stat = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $ret = array(
-                    'pass'       => 'abc123',
+                    'pass'       => $stat['password'],
                     'inbox_id'   => $username,
                     'item_count' => $stat['GCOUNT'],
                     'size'       => $stat['GSIZE'],
@@ -124,13 +126,14 @@ class PopDb_Driver_Mysql implements PopDb_DriverInterface
 
 
     /**
+     * Deletes messages from the mail store
      * @param $address_id
-     * @param $mail_id_list
+     * @param $mail_id_list array list of ids to delete
      *
      *
-     * @return int
+     * @return int|bool
      */
-    public function deleteMarked($address_id, $mail_id_list)
+    public function deleteMarked($address_id, array $mail_id_list)
     {
         $affected = 0;
         $link = $this->get_db_link();
@@ -154,10 +157,11 @@ class PopDb_Driver_Mysql implements PopDb_DriverInterface
     }
 
     /**
+     * Returns the raw message with headers and body as a string
      * @param $address_id
      * @param $mail_id
      *
-     * @return bool
+     * @return bool|string
      */
     public function fetchRawEmail($address_id, $mail_id)
     {
@@ -186,7 +190,8 @@ class PopDb_Driver_Mysql implements PopDb_DriverInterface
     }
 
     /**
-     * @param $address_id
+     * Simply checks to see if the message exists
+     * @param $address_id string email address identifier
      * @param $mail_id
      *
      * @return int
@@ -219,8 +224,13 @@ class PopDb_Driver_Mysql implements PopDb_DriverInterface
     }
 
     /**
-     * @param        $address_id
-     * @param string $mail_id
+     * Returns a list of up to 50 most recent messages
+     * array has the following keys:
+     * 'size' (in bytes)
+     * 'mail_id' - the
+     * 'hash' - a unique signature of the message
+     * @param $address_id string
+     * @param $mail_id string
      *
      * @return array
      */
