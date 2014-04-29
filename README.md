@@ -49,6 +49,7 @@ Schema
 -----------
 The Mysql.php file in the Driver directory is an example.
 
+```sql
 CREATE TABLE IF NOT EXISTS `gm2_mail` (
     `mail_id` bigint(20) NOT NULL AUTO_INCREMENT,
     `mail_address_id` varchar(32) CHARACTER SET latin1 NOT NULL,
@@ -60,6 +61,7 @@ CREATE TABLE IF NOT EXISTS `gm2_mail` (
     PRIMARY KEY (`mail_id`),
     KEY `mail_address_id` (`mail_address_id`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8;
+```
 
 Notes:
 
