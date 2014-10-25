@@ -48,6 +48,41 @@ ignore_user_abort(true);
 // typically, this value should be set in php.ini, PHP may ignore it here!
 ini_set('memory_limit', '512M');
 
+##############################################################
+# Configuration start
+##############################################################
+
+
+if (file_exists(dirname(__FILE__) . '/popd-config.php')) {
+    // place a copy of the define statements in to popd-config.php
+    require_once(dirname(__FILE__) . '/popd-config.php');
+} else {
+    // defaults if pop-config.php is not available
+    log_line('Loading defaults', 1);
+
+    define('GPOP_MAX_CLIENTS', 10);
+    //define('GPOP_LOG_FILE', $log_file);
+    //define('GPOP_VERBOSE', $verbose);
+    define('GPOP_TIMEOUT', 60); // how many seconds before timeout.
+    define('GPOP_MYSQL_HOST', 'localhost');
+    define('GPOP_MYSQL_USER', 'dbx');
+    define('GPOP_MYSQL_PASS', 'password123');
+    define('GPOP_MYSQL_DB', 'dbx');
+    define('GPOP_LISTEN_IP4', '0.0.0.0'); // 0.0.0.0 or ip address
+    define('GPOP_USER', 'dbx'); // user & group to run under (setuid/setgid)
+    define('GPOP_HOSTNAME', 'guerrillamail.com');
+    //define('GPOP_PORT', $listen_port);
+    define('GPOP_DB_MAPPER', 'Mysql');
+
+    // ssl settings
+    define('GPOP_PEM_FILE_PATH', ''); // full path to your .pem file for ssl (key and cert)
+    define('GPOP_PEM_PASSPHRASE', 'phpPopServerSecret');
+
+
+}
+##############################################################
+# Configuration end
+##############################################################
 
 if (isset($argc) && ($argc > 1)) {
     foreach ($argv as $i => $arg) {
@@ -62,16 +97,11 @@ if (isset($argc) && ($argc > 1)) {
         }
     }
 }
-if (defined('GPOP_PORT')) {
-    $listen_port = GPOP_PORT;
-}
-elseif (!isset($listen_port)) {
+if (!isset($listen_port)) {
     $listen_port = 110;
 }
-if (defined('GPOP_LOG_FILE')) {
-    $log_file = GPOP_LOG_FILE;
-}
-elseif (isset($log_file)) {
+
+if (isset($log_file)) {
 
     if (!file_exists($log_file) && file_exists(dirname(__FILE__) . '/' . $log_file)) {
         $log_file = dirname(__FILE__) . '/' . $log_file;
@@ -82,49 +112,24 @@ elseif (isset($log_file)) {
     echo "log file not specified[]\n";
     $log_file = false;
 }
-if (defined('GPOP_VERBOSE')) {
-    $verbose = GPOP_VERBOSE;
-}
-elseif (!isset($verbose)) {
+
+if (!isset($verbose)) {
     $verbose = false;
 }
 
-
-##############################################################
-# Configuration start
-##############################################################
-
-
-if (file_exists(dirname(__FILE__) . '/popd-config.php')) {
-    // place a copy of the define statements in to popd-config.php
-    require_once(dirname(__FILE__) . '/popd-config.php');
-} else {
-    // defaults if pop-config.php is not available
-    log_line('Loading defaults', 1);
-
-    define('GPOP_MAX_CLIENTS', 10);
-    define('GPOP_LOG_FILE', $log_file);
-    define('GPOP_VERBOSE', $verbose);
-    define('GPOP_TIMEOUT', 60); // how many seconds before timeout.
-    define('GPOP_MYSQL_HOST', 'localhost');
-    define('GPOP_MYSQL_USER', 'dbx');
-    define('GPOP_MYSQL_PASS', 'password123');
-    define('GPOP_MYSQL_DB', 'dbx');
-    define('GPOP_LISTEN_IP4', '0.0.0.0'); // 0.0.0.0 or ip address
-    define('GPOP_USER', 'dbx'); // user & group to run under (setuid/setgid)
-    define('GPOP_HOSTNAME', 'guerrillamail.com');
+if (!defined('GPOP_PORT')) {
     define('GPOP_PORT', $listen_port);
-    define('GPOP_DB_MAPPER', 'Mysql');
-
-    // ssl settings
-    define('GPOP_PEM_FILE_PATH', ''); // full path to your .pem file for ssl (key and cert)
-    define('GPOP_PEM_PASSPHRASE', 'phpPopServerSecret');
-
-
 }
-##############################################################
-# Configuration end
-##############################################################
+
+if (!defined('GPOP_LOG_FILE')) {
+    define('GPOP_LOG_FILE', $log_file);
+}
+
+if (!defined('GPOP_VERBOSE')) {
+    define('GPOP_VERBOSE', $verbose);
+}
+
+
 spl_autoload_register('pop3_class_loader', false);
 
 function pop3_class_loader($className)
