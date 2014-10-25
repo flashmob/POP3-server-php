@@ -62,10 +62,16 @@ if (isset($argc) && ($argc > 1)) {
         }
     }
 }
-if (!isset($listen_port)) {
+if (defined('GPOP_PORT')) {
+    $listen_port = GPOP_PORT;
+}
+elseif (!isset($listen_port)) {
     $listen_port = 110;
 }
-if (isset($log_file)) {
+if (defined('GPOP_LOG_FILE')) {
+    $log_file = GPOP_LOG_FILE;
+}
+elseif (isset($log_file)) {
 
     if (!file_exists($log_file) && file_exists(dirname(__FILE__) . '/' . $log_file)) {
         $log_file = dirname(__FILE__) . '/' . $log_file;
@@ -73,12 +79,13 @@ if (isset($log_file)) {
         $log_file = dirname(__FILE__) . '/log.txt';
     }
 } else {
-
     echo "log file not specified[]\n";
     $log_file = false;
 }
-if (!isset($verbose)) {
-
+if (defined('GPOP_VERBOSE')) {
+    $verbose = GPOP_VERBOSE;
+}
+elseif (!isset($verbose)) {
     $verbose = false;
 }
 
@@ -120,7 +127,22 @@ if (file_exists(dirname(__FILE__) . '/popd-config.php')) {
 ##############################################################
 spl_autoload_register('pop3_class_loader', false);
 
-function pop3_class_loader($class)
+function pop3_class_loader($className)
+{
+    $className = ltrim($className, '\\');
+    $fileName  = '';
+    $namespace = '';
+    if ($lastNsPos = strrpos($className, '\\')) {
+        $namespace = substr($className, 0, $lastNsPos);
+        $className = substr($className, $lastNsPos + 1);
+        $fileName  = str_replace('\\', DIRECTORY_SEPARATOR, $namespace) . DIRECTORY_SEPARATOR;
+    }
+    $fileName .= str_replace('_', DIRECTORY_SEPARATOR, $className) . '.php';
+
+    require $fileName;
+}
+
+function pop3_class_loader_old($class)
 {
 
     $path = str_replace('_', '/', $class);

@@ -7,7 +7,8 @@
 define('GPOP_LISTEN_IP4', '0.0.0.0'); // 0.0.0.0 or ip address
 define('GPOP_USER', 'dbx'); // user & group to run under (setuid/setgid)
 define('GPOP_HOSTNAME', 'guerrillamail.com');
-define('GPOP_PORT', $listen_port);
+# Uncomment to override -p command line argument
+# define('GPOP_PORT', $listen_port);
 
 // Database
 define('GPOP_DB_MAPPER', 'Mysql'); // Name of the driver in PodDb/Driver
@@ -17,8 +18,10 @@ define('GPOP_MYSQL_PASS', 'password123');
 define('GPOP_MYSQL_DB', 'dbx');
 
 define('GPOP_MAX_CLIENTS', 100);
+# Uncomment to override -l command line argument
 define('GPOP_LOG_FILE', $log_file);
-define('GPOP_VERBOSE', $verbose);
+# Uncomment to override -v command line argument
+define('GPOP_VERBOSE', $verbose); // true or false
 define('GPOP_TIMEOUT', 60); // how many seconds before timeout.
 
 define('GPOP_ALLOW_DELETE', true);
