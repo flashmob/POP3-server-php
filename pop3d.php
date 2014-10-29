@@ -145,14 +145,7 @@ function pop3_class_loader($className)
     require $fileName;
 }
 
-function pop3_class_loader_old($class)
-{
 
-    $path = str_replace('_', '/', $class);
-    $path = dirname(__FILE__) . '/' . $path . '.php';
-    require($path);
-
-}
 
 
 

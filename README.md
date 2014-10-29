@@ -129,7 +129,7 @@ mail {
 
 ```
 
-What's auth_http do?
+What does auth_http do?
 ------------------
 
 For each connection, Nginx will make a HTTP request to popauth.php to authenticate the user.
