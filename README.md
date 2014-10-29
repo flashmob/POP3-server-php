@@ -70,17 +70,18 @@ In this example:
 
 - hash is the md5 of the entire message
 
-- It supports APOP auth, however, it's recommended that normal auth should be used instead with SSL / TLS. 
+- It supports APOP auth, however, it's recommended that normal auth should be used, instead with SSL / TLS. 
 See below how to use Nginx to do that.
 
 Limitations
 --------------
 
-- Doesn't support SSL / STARTTLS directly, needs to proxy through Nginx
+- Doesn't support SSL / STARTTLS directly, needs to proxy through Nginx (or another proxy?)
 
 Nginx
 ---------------
 You may put this server behind Nginx
+
 Here's an example configuration
 
 
