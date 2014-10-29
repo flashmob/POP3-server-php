@@ -70,7 +70,8 @@ In this example:
 
 - hash is the md5 of the entire message
 
-- Unfortunately password needs to be given plaintext. SASL is not supported yet
+- It supports APOP auth, however, it's recommended that normal auth should be used instead with SSL / TLS. 
+See below how to use Nginx to do that.
 
 Limitations
 --------------
