@@ -18,6 +18,7 @@ This is a prototype for a non-blocking, event driven POP3 server for GuerrillaMa
 
 Easy to interface with a database backend, a MySQL example is given.
 
+Requires the libevent extension from here http://pecl.php.net/package/libevent
 
 Installation
 --------------
