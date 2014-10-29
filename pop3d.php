@@ -229,14 +229,14 @@ if (GPOP_PORT == 995) {
 if (isset($context)) {
     // Apply SSL context
     $socket = stream_socket_server(
-        'tcp://' . GPOP_LISTEN_IP4 . ':' . $listen_port,
+        'tcp://' . GPOP_LISTEN_IP4 . ':' . GPOP_PORT,
         $error_number,
         $error_string,
         STREAM_SERVER_BIND | STREAM_SERVER_LISTEN,
         $context
     );
 } else {
-    $socket = stream_socket_server('tcp://' . GPOP_LISTEN_IP4 . ':' . $listen_port, $error_number, $error_string);
+    $socket = stream_socket_server('tcp://' . GPOP_LISTEN_IP4 . ':' . GPOP_PORT, $error_number, $error_string);
 
 }
 /**
@@ -254,7 +254,7 @@ event_set($event, $socket, EV_READ | EV_PERSIST, 'ev_accept', $base);
 event_base_set($event, $base);
 event_add($event);
 
-log_line("Guerrilla Mail POP3 Daemon started on port " . $listen_port, 1);
+log_line("Guerrilla Mail POP3 Daemon started on port " . GPOP_PORT, 1);
 
 // drop down to user level after opening the smptp port
 $user = posix_getpwnam(GPOP_USER);
@@ -331,8 +331,7 @@ function ev_error($buffer, $error, $id)
 {
     global $clients;
     log_line(
-        "event error $error client:$id " . EV_TIMEOUT . ", " . EV_SIGNAL . ", " . EV_READ . ", " . EV_WRITE . " and "
-        . EV_PERSIST . "  ",
+        "event error: $error, client:$id",
         1
     );
 
@@ -501,6 +500,7 @@ function process_pop($client_id)
             $input = trim(read_line($clients, $client_id));
 
             if ($input) {
+                log_line('[' . $client_id . '] cmd:' . $input);
                 if (stripos($input, 'CAPA') === 0) {
                     // http://www.ietf.org/rfc/rfc2449.txt
                     add_response($client_id, GPOP_RESPONSE_OK . ' Capability list follows');

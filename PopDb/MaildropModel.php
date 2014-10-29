@@ -58,11 +58,15 @@ class PopDb_MaildropModel
         } else {
             $this->setError(false);
         }
-        // apop else plain auth
-        if ($ts && ($this->secureCompare(md5($ts . $inbox['pass']), $password))) {
+        if (defined('POP_REQUIRE_PASSWORD') && POP_REQUIRE_PASSWORD == false) {
             $valid = true;
-        } elseif (!$ts && $this->secureCompare($inbox['pass'], $password)) {
-            $valid = true;
+        } else {
+            // apop else plain auth
+            if ($ts && ($this->secureCompare(md5($ts . $inbox['pass']), $password))) {
+                $valid = true;
+            } elseif (!$ts && $this->secureCompare($inbox['pass'], $password)) {
+                $valid = true;
+            }
         }
         if ($valid) {
             self::$users[$user] = true;
@@ -100,9 +104,7 @@ class PopDb_MaildropModel
      * empty array if no messages.
      *
      * @param string $username
-     * @param string $pop_id
-     *
-     * @internal param int|string $message_id if given, returns a single message. false if not found
+     * @param string $pop_id if given, returns a single message. false if not found
      *
      * @return bool|array
      */
